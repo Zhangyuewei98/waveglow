@@ -14,11 +14,11 @@
         "training_files": "train_files.txt",
         "segment_length": 16000,
         "sampling_rate": 22050,
-        "filter_length": 1024,
-        "hop_length": 256,
-        "win_length": 1024,
-        "mel_fmin": 0.0,
-        "mel_fmax": 8000.0
+        "filter_length": 2048,
+        "hop_length": 275,
+        "win_length": 1100,
+        "mel_fmin": 125.0,
+        "mel_fmax": 7600.0
     },
     "dist_config": {
         "dist_backend": "nccl",
@@ -26,7 +26,7 @@
     },
 
     "waveglow_config": {
-        "n_mel_channels": 80,
+        "n_mel_channels": 160,
         "n_flows": 12,
         "n_group": 8,
         "n_early_every": 4,

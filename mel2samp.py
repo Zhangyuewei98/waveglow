@@ -92,6 +92,7 @@ class Mel2Samp(torch.utils.data.Dataset):
                 sampling_rate, self.sampling_rate))
 
         # Take segment
+        print(torch.min(audio), torch.max(audio), audio.size(0))
         if audio.size(0) >= self.segment_length:
             max_audio_start = audio.size(0) - self.segment_length
             audio_start = random.randint(0, max_audio_start)
@@ -99,7 +100,8 @@ class Mel2Samp(torch.utils.data.Dataset):
         else:
             audio = torch.nn.functional.pad(audio, (0, self.segment_length - audio.size(0)), 'constant').data
 
-        mel = self.get_mel(audio)
+        gta_filename = os.path.basename(filename).split('.')[0] + '.npy'
+        mel = np.load(os.path.join('gta', gta_filename))
         audio = audio / MAX_WAV_VALUE
 
         return (mel, audio)
@@ -114,11 +116,9 @@ class Mel2Samp(torch.utils.data.Dataset):
 if __name__ == "__main__":
     # Get defaults so it can work with no Sacred
     parser = argparse.ArgumentParser()
-    parser.add_argument('-f', "--filelist_path", required=True)
-    parser.add_argument('-c', '--config', type=str,
-                        help='JSON file for configuration')
-    parser.add_argument('-o', '--output_dir', type=str,
-                        help='Output directory')
+    parser.add_argument('-f', "--filelist_path", required=False)
+    parser.add_argument('-c', '--config', default='config.json', type=str, help='JSON file for configuration')
+    parser.add_argument('-o', '--output_dir', type=str, help='Output directory')
     args = parser.parse_args()
 
     with open(args.config) as f:
@@ -126,7 +126,7 @@ if __name__ == "__main__":
     data_config = json.loads(data)["data_config"]
     mel2samp = Mel2Samp(**data_config)
 
-    filepaths = files_to_list(args.filelist_path)
+    filepaths = files_to_list(data_config['training_files'])
 
     # Make directory if it doesn't exist
     if not os.path.isdir(args.output_dir):
@@ -137,6 +137,5 @@ if __name__ == "__main__":
         audio, sr = load_wav_to_torch(filepath)
         melspectrogram = mel2samp.get_mel(audio)
         filename = os.path.basename(filepath)
-        new_filepath = args.output_dir + '/' + filename + '.pt'
-        print(new_filepath)
+        new_filepath = filename.split('.')[0]
         torch.save(melspectrogram, new_filepath)

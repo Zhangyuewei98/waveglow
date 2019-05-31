@@ -86,8 +86,7 @@ def train(num_gpus, rank, group_name, output_directory, epochs, learning_rate,
     # Load checkpoint if one exists
     iteration = 0
     if checkpoint_path != "":
-        model, optimizer, iteration = load_checkpoint(checkpoint_path, model,
-                                                      optimizer)
+        model, optimizer, iteration = load_checkpoint(checkpoint_path, model, optimizer)
         iteration += 1  # next iteration is iteration + 1
 
     trainset = Mel2Samp(**data_config)
@@ -147,12 +146,9 @@ def train(num_gpus, rank, group_name, output_directory, epochs, learning_rate,
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('-c', '--config', type=str,
-                        help='JSON file for configuration')
-    parser.add_argument('-r', '--rank', type=int, default=0,
-                        help='rank of process for distributed')
-    parser.add_argument('-g', '--group_name', type=str, default='',
-                        help='name of group for distributed')
+    parser.add_argument('-c', '--config', type=str, default='config.json', help='JSON file for configuration')
+    parser.add_argument('-r', '--rank', type=int, default=0, help='rank of process for distributed')
+    parser.add_argument('-g', '--group_name', type=str, default='', help='name of group for distributed')
     args = parser.parse_args()
 
     # Parse configs.  Globals nicer in this case
@@ -165,7 +161,11 @@ if __name__ == "__main__":
     global dist_config
     dist_config = config["dist_config"]
     global waveglow_config
-    waveglow_config = config["waveglow_config"]
+    waveglow_config = {
+        **config["waveglow_config"],
+        'win_length': data_config['win_length'],
+        'hop_length': data_config['hop_length'],
+    }
 
     num_gpus = torch.cuda.device_count()
     if num_gpus > 1:
