@@ -152,15 +152,15 @@ def train(num_gpus, rank, group_name, output_directory, epochs,
             if with_tensorboard and rank == 0:
                 logger.add_scalar('training_loss', reduced_loss, i + len(train_loader) * epoch)
 
-            if epoch % epochs_per_checkpoint == 0:
-                if rank == 0:
-                    # Keep only one checkpoint
-                    last_chkpt = os.path.join(output_directory, f'waveglow_{epoch - epochs_per_checkpoint:06d}.pt')
-                    if os.path.exists(last_chkpt):
-                        os.remove(last_chkpt)
+        if epoch % epochs_per_checkpoint == 0:
+            if rank == 0:
+                # Keep only one checkpoint
+                last_chkpt = os.path.join(output_directory, f'waveglow_{epoch - epochs_per_checkpoint:06d}.pt')
+                if os.path.exists(last_chkpt):
+                    os.remove(last_chkpt)
 
-                    checkpoint_path = os.path.join(output_directory, f'waveglow_{epoch:06d}.pt')
-                    save_checkpoint(model, optimizer, epoch, checkpoint_path)
+                checkpoint_path = os.path.join(output_directory, f'waveglow_{epoch:06d}.pt')
+                save_checkpoint(model, optimizer, epoch, checkpoint_path)
 
 
 if __name__ == "__main__":
