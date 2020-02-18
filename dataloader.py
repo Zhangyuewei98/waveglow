@@ -7,10 +7,10 @@ from torch.utils.data import Dataset, DataLoader
 
 
 class Mel2Samp(Dataset):
-    def __init__(self, segment_length, filter_length,
+    def __init__(self, data_path, segment_length, filter_length,
                  hop_length, win_length, sampling_rate, mel_pad_val):
-        self.wav_list = glob.glob(os.path.join('../Tacotron-2/training_data/**/audio', '*.npy'), recursive=True)
-        self.mel_list = glob.glob(os.path.join('../Tacotron-2/training_data/**/mels', '*.npy'), recursive=True)
+        self.wav_list = glob.glob(os.path.join(data_path, '**', 'audio', '*.npy'), recursive=True)
+        self.mel_list = glob.glob(os.path.join(data_path, '**', 'mels', '*.npy'), recursive=True)
         self.hop_length = hop_length
         self.sampling_rate = sampling_rate
         self.segment_length = segment_length
@@ -33,7 +33,6 @@ class Mel2Samp(Dataset):
         assert(self.hop_length * mel.size(1) == len(audio))
 
         max_mel_start = mel.size(1) - self.mel_segment_length
-        assert(max_mel_start >= 0)
         mel_start = random.randint(0, max_mel_start)
         mel_end = mel_start + self.mel_segment_length
         mel = mel[:, mel_start:mel_end]

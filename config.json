@@ -2,7 +2,7 @@
     "train_config": {
         "fp16_run": true,
         "output_directory": "checkpoints",
-        "epochs": 100000,
+        "epochs": 1000,
         "init_lr": 4e-4,
         "final_lr": 4e-5,
         "sigma": 1.0,
@@ -13,6 +13,7 @@
         "with_tensorboard": true
     },
     "data_config": {
+        "data_path": "training_data",
         "segment_length": 16384,
         "sampling_rate": 22050,
         "filter_length": 1024,
@@ -31,7 +32,6 @@
         "n_group": 256,
         "n_early_every": 4,
         "n_early_size": 16,
-        "n_bits": 9,
         "WN_config": {
             "n_layers": 8,
             "n_channels": 256,

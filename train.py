@@ -29,6 +29,7 @@ import json
 import math
 import os
 import torch
+import tqdm
 
 #=====START: ADDED FOR DISTRIBUTED======
 from distributed import init_distributed, apply_gradient_allreduce, reduce_tensor
@@ -96,7 +97,7 @@ def train(num_gpus, rank, group_name, output_directory, epochs,
         model, optimizer = amp.initialize(model, optimizer, opt_level='O0')
 
     # Load checkpoint if one exists
-    epoch_offset = 0
+    epoch_offset = 1
     if checkpoint_path != "":
         model, optimizer, epoch_offset = load_checkpoint(checkpoint_path, model, optimizer)
         epoch_offset += 1  # next epoch is epoch_offset + 1
@@ -128,8 +129,8 @@ def train(num_gpus, rank, group_name, output_directory, epochs,
         print(f'Epoch: {epoch}')
         adjust_learning_rate(optimizer, epoch, init_lr, final_lr, epochs)
 
-        for i, batch in enumerate(train_loader):
-            model.zero_grad()
+        for i, batch in enumerate(tqdm.tqdm(train_loader)):
+            optimizer.zero_grad()
 
             mel, audio = batch
             outputs = model((mel.cuda(), audio.cuda()))
@@ -148,9 +149,8 @@ def train(num_gpus, rank, group_name, output_directory, epochs,
 
             optimizer.step()
 
-            print(f'{i+1}:\t{reduced_loss:.9f}')
             if with_tensorboard and rank == 0:
-                logger.add_scalar('training_loss', reduced_loss, i + len(train_loader) * epoch)
+                logger.add_scalar('training_loss', reduced_loss, i + 1 + len(train_loader) * epoch)
 
         if epoch % epochs_per_checkpoint == 0:
             if rank == 0:
