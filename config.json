@@ -32,6 +32,7 @@
         "n_group": 256,
         "n_early_every": 4,
         "n_early_size": 16,
+        "n_classes": 512,
         "WN_config": {
             "n_layers": 8,
             "n_channels": 256,

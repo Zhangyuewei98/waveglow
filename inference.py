@@ -47,15 +47,14 @@ def main(waveglow_path, sigma, output_dir, sampling_rate, is_fp16, denoiser_stre
 
     for i, file_path in enumerate(glob.glob('*.npy')):
         file_name = os.path.splitext(os.path.basename(file_path))[0]
-        mel = np.load(file_path)
-        mel = torch.tensor(mel).unsqueeze(mel, 0).cuda()
+        mel = torch.from_numpy(np.load(file_path))
+        mel = torch.unsqueeze(mel, 0).cuda()
         mel = mel.half() if is_fp16 else mel
         with torch.no_grad():
             audio = waveglow.infer(mel, sigma=sigma)
             if denoiser_strength > 0:
                 audio = denoiser(audio, denoiser_strength)
             audio = audio * MAX_WAV_VALUE
-        audio = audio.squeeze().cpu().numpy()
         audio = audio.astype('int16')
         audio_path = os.path.join(output_dir, f'waveglow_{file_name}.wav')
         write(audio_path, sampling_rate, audio)

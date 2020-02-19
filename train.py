@@ -132,8 +132,7 @@ def train(num_gpus, rank, group_name, output_directory, epochs,
         for i, batch in enumerate(tqdm.tqdm(train_loader)):
             optimizer.zero_grad()
 
-            mel, audio = batch
-            outputs = model((mel.cuda(), audio.cuda()))
+            outputs = model(batch)
 
             loss = criterion(outputs)
             if num_gpus > 1:
