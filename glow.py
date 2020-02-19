@@ -66,13 +66,10 @@ class WaveGlowLoss(torch.nn.Module):
 
     def forward(self, model_output):
         z, log_s_list, log_det_W_list = model_output
+        log_s_total, log_det_W_total = 0, 0
         for i, log_s in enumerate(log_s_list):
-            if i == 0:
-                log_s_total = torch.sum(log_s)
-                log_det_W_total = log_det_W_list[i]
-            else:
-                log_s_total = log_s_total + torch.sum(log_s)
-                log_det_W_total += log_det_W_list[i]
+            log_s_total += torch.sum(log_s)
+            log_det_W_total += log_det_W_list[i]
 
         loss = torch.sum(z*z)/(2*self.sigma*self.sigma) - log_s_total - log_det_W_total
         return loss/(z.size(0)*z.size(1)*z.size(2))
@@ -194,9 +191,9 @@ class WaveGlow(torch.nn.Module):
                  n_early_size, n_classes, WN_config):
         super(WaveGlow, self).__init__()
 
-        # self.upsample = torch.nn.ConvTranspose1d(n_mel_channels,
-        #                                          n_mel_channels,
-        #                                          1024, stride=256)
+        self.upsample = torch.nn.ConvTranspose1d(n_mel_channels,
+                                                 n_mel_channels,
+                                                 1024, stride=256)
         assert(n_group % 2 == 0)
         self.n_flows = n_flows
         self.n_group = n_group
@@ -205,7 +202,7 @@ class WaveGlow(torch.nn.Module):
         self.n_classes = n_classes
         self.WN = torch.nn.ModuleList()
         self.convinv = torch.nn.ModuleList()
-        self.fc = torch.nn.Linear(n_group, n_classes)
+        self.fc = torch.nn.Linear(1, n_classes)
 
         n_half = int(n_group/2)
 
@@ -217,9 +214,15 @@ class WaveGlow(torch.nn.Module):
                 n_half = n_half - int(self.n_early_size / 2)
                 n_remaining_channels = n_remaining_channels - self.n_early_size
             self.convinv.append(Invertible1x1Conv(n_remaining_channels))
-            # self.WN.append(WN(n_half, n_mel_channels*n_group, **WN_config))
-            self.WN.append(WN(n_half, n_mel_channels, **WN_config))
+            self.WN.append(WN(n_half, n_mel_channels*n_group, **WN_config))
         self.n_remaining_channels = n_remaining_channels  # Useful during inference
+
+    def pre_process(self, inputs):
+        spect, audio = inputs
+        audio = audio.unfold(1, self.n_group, self.n_group).permute(0, 2, 1)
+        audio = encode_mu_law(audio, self.n_classes)
+        audio = label_2_float(audio, self.n_classes)
+        return spect.cuda(), audio.cuda()
 
     def forward(self, forward_input):
         """
@@ -227,21 +230,16 @@ class WaveGlow(torch.nn.Module):
         forward_input[1] = audio: batch x time
         """
         spect, audio = forward_input
+        spect = self.upsample(spect)
 
         #  Upsample spectrogram to size of audio
-        #spect = self.upsample(spect)
-        # assert(spect.size(2) >= audio.size(1))
-        # if spect.size(2) > audio.size(1):
-        #     spect = spect[:, :, :audio.size(1)]
+        seg_len = audio.size(1) * audio.size(2)
+        assert(spect.size(2) >= seg_len)
+        if spect.size(2) > seg_len:
+            spect = spect[:, :, :seg_len]
 
-        #spect = spect.unfold(2, self.n_group, self.n_group).permute(0, 2, 1, 3)
-        #spect = spect.contiguous().view(spect.size(0), spect.size(1), -1).permute(0, 2, 1)
-
-        audio = audio.unfold(1, self.n_group, self.n_group).permute(0, 2, 1)
-        audio = encode_mu_law(audio, self.n_classes)
-        audio = label_2_float(audio, self.n_classes)
-        spect = spect.cuda()
-        audio = audio.cuda()
+        spect = spect.unfold(2, self.n_group, self.n_group).permute(0, 2, 1, 3)
+        spect = spect.contiguous().view(spect.size(0), spect.size(1), -1).permute(0, 2, 1)
 
         outputs = []
         log_s_list = []
@@ -269,18 +267,26 @@ class WaveGlow(torch.nn.Module):
 
         outputs.append(audio)
         outputs = torch.cat(outputs, 1)
-        logits = self.fc(outputs.permute(0, 2, 1).contiguous())
+        outputs = outputs.permute(0, 2, 1).contiguous().view(outputs.size(0), -1).unsqueeze(-1)
+        logits = self.fc(outputs)
 
         return logits, log_s_list, log_det_W_list
 
-    def infer(self, spect, sigma=1.0):
-        # spect = self.upsample(spect)
-        # # trim conv artifacts. maybe pad spec to kernel multiple
-        # time_cutoff = self.upsample.kernel_size[0] - self.upsample.stride[0]
-        # spect = spect[:, :, :-time_cutoff]
+    def post_process(self, audio):
+        posterior = torch.nn.functional.softmax(logits, dim=1)
+        distrib = torch.distributions.Categorical(posterior)
+        # label -> float
+        audio = label_2_float(distrib.sample().squeeze(), self.n_classes)
+        return decode_mu_law(audio.cpu().numpy(), self.n_classes)
 
-        # spect = spect.unfold(2, self.n_group, self.n_group).permute(0, 2, 1, 3)
-        # spect = spect.contiguous().view(spect.size(0), spect.size(1), -1).permute(0, 2, 1)
+    def infer(self, spect, sigma=1.0):
+        spect = self.upsample(spect)
+        # trim conv artifacts. maybe pad spec to kernel multiple
+        time_cutoff = self.upsample.kernel_size[0] - self.upsample.stride[0]
+        spect = spect[:, :, :-time_cutoff]
+
+        spect = spect.unfold(2, self.n_group, self.n_group).permute(0, 2, 1, 3)
+        spect = spect.contiguous().view(spect.size(0), spect.size(1), -1).permute(0, 2, 1)
 
         if spect.type() == 'torch.cuda.HalfTensor':
             audio = torch.cuda.HalfTensor(spect.size(0),
@@ -313,12 +319,9 @@ class WaveGlow(torch.nn.Module):
                     z = torch.cuda.FloatTensor(spect.size(0), self.n_early_size, spect.size(2)).normal_()
                 audio = torch.cat((sigma*z, audio), 1)
 
-        logits = audio.permute(0, 2, 1).contiguous().view(audio.size(0), -1).data
-        posterior = torch.nn.functional.softmax(logits, dim=1)
-        distrib = torch.distributions.Categorical(posterior)
-        # label -> float
-        audio = label_2_float(distrib.sample().squeeze(), self.n_classes)
-        return decode_mu_law(audio.cpu().numpy(), self.n_classes)
+        audio = audio.permute(0, 2, 1).contiguous().view(audio.size(0), -1)
+        logits = self.fc(audio)
+        return self.post_process(logits)
 
     @staticmethod
     def remove_weightnorm(model):

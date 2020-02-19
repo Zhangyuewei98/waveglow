@@ -132,6 +132,7 @@ def train(num_gpus, rank, group_name, output_directory, epochs,
         for i, batch in enumerate(tqdm.tqdm(train_loader)):
             optimizer.zero_grad()
 
+            batch = model.pre_process(batch)
             outputs = model(batch)
 
             loss = criterion(outputs)
