@@ -55,9 +55,9 @@ def main(waveglow_path, sigma, output_dir, sampling_rate, is_fp16, denoiser_stre
             if denoiser_strength > 0:
                 audio = denoiser(audio, denoiser_strength)
             audio = audio * MAX_WAV_VALUE
-        audio = audio.astype('int16')
+        audio = audio.squeeze().cpu().numpy()
         audio_path = os.path.join(output_dir, f'waveglow_{file_name}.wav')
-        write(audio_path, sampling_rate, audio)
+        write(audio_path, sampling_rate, audio.astype('int16'))
 
 
 if __name__ == "__main__":

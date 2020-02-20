@@ -202,7 +202,7 @@ class WaveGlow(torch.nn.Module):
         self.n_classes = n_classes
         self.WN = torch.nn.ModuleList()
         self.convinv = torch.nn.ModuleList()
-        self.fc = torch.nn.Linear(1, n_classes)
+        # self.fc = torch.nn.Linear(1, n_classes)
 
         n_half = int(n_group/2)
 
@@ -220,8 +220,8 @@ class WaveGlow(torch.nn.Module):
     def pre_process(self, inputs):
         spect, audio = inputs
         audio = audio.unfold(1, self.n_group, self.n_group).permute(0, 2, 1)
-        audio = encode_mu_law(audio, self.n_classes)
-        audio = label_2_float(audio, self.n_classes)
+        # audio = encode_mu_law(audio, self.n_classes)
+        # audio = label_2_float(audio, self.n_classes)
         return spect.cuda(), audio.cuda()
 
     def forward(self, forward_input):
@@ -267,13 +267,12 @@ class WaveGlow(torch.nn.Module):
 
         outputs.append(audio)
         outputs = torch.cat(outputs, 1)
-        outputs = outputs.permute(0, 2, 1).contiguous().view(outputs.size(0), -1).unsqueeze(-1)
-        logits = self.fc(outputs)
-
-        return logits, log_s_list, log_det_W_list
+        # outputs = outputs.permute(0, 2, 1).contiguous().view(outputs.size(0), -1).unsqueeze(-1)
+        # logits = self.fc(outputs)
+        return outputs, log_s_list, log_det_W_list
 
     def post_process(self, audio):
-        posterior = torch.nn.functional.softmax(logits, dim=1)
+        posterior = torch.nn.functional.softmax(logits, dim=-1)
         distrib = torch.distributions.Categorical(posterior)
         # label -> float
         audio = label_2_float(distrib.sample().squeeze(), self.n_classes)
@@ -319,9 +318,9 @@ class WaveGlow(torch.nn.Module):
                     z = torch.cuda.FloatTensor(spect.size(0), self.n_early_size, spect.size(2)).normal_()
                 audio = torch.cat((sigma*z, audio), 1)
 
-        audio = audio.permute(0, 2, 1).contiguous().view(audio.size(0), -1)
-        logits = self.fc(audio)
-        return self.post_process(logits)
+        return audio.permute(0, 2, 1).contiguous().view(audio.size(0), -1).data
+        # logits = self.fc(audio)
+        # return self.post_process(logits)
 
     @staticmethod
     def remove_weightnorm(model):
