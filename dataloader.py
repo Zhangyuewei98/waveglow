@@ -9,8 +9,8 @@ from torch.utils.data import Dataset, DataLoader
 class Mel2Samp(Dataset):
     def __init__(self, data_path, segment_length, filter_length,
                  hop_length, win_length, sampling_rate, mel_pad_val):
-        self.wav_list = glob.glob(os.path.join(data_path, '**', 'audio', '*.npy'), recursive=True)
-        self.mel_list = glob.glob(os.path.join(data_path, '**', 'mels', '*.npy'), recursive=True)
+        self.wav_list = glob.glob(os.path.join(data_path, '**', 'quant', '*.npy'), recursive=True)
+        self.mel_list = glob.glob(os.path.join(data_path, '**', 'gta', '*.npy'), recursive=True)
         self.hop_length = hop_length
         self.sampling_rate = sampling_rate
         self.segment_length = segment_length

@@ -2,24 +2,24 @@
     "train_config": {
         "fp16_run": true,
         "output_directory": "checkpoints",
-        "epochs": 1000,
+        "epochs": 100000,
         "init_lr": 4e-4,
-        "final_lr": 4e-5,
+        "final_lr": 1e-5,
         "sigma": 1.0,
         "epochs_per_checkpoint": 1,
-        "batch_size": 6,
+        "batch_size": 64,
         "seed": 1234,
         "checkpoint_path": "",
         "with_tensorboard": true
     },
     "data_config": {
-        "data_path": "/training_data",
-        "segment_length": 16384,
+        "data_path": "voc_mol",
+        "segment_length": 2048,
         "sampling_rate": 22050,
         "filter_length": 1024,
         "hop_length": 256,
         "win_length": 1024,
-        "mel_pad_val": -10.0
+        "mel_pad_val": -12.0
     },
     "dist_config": {
         "dist_backend": "nccl",
