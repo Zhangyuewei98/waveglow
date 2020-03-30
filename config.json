@@ -7,14 +7,14 @@
         "final_lr": 1e-5,
         "sigma": 1.0,
         "epochs_per_checkpoint": 1,
-        "batch_size": 16,
+        "batch_size": 24,
         "seed": 1234,
         "checkpoint_path": "",
         "with_tensorboard": true
     },
     "data_config": {
         "data_path": "voc_mol",
-        "segment_length": 8192,
+        "segment_length": 16384,
         "sampling_rate": 22050,
         "filter_length": 1024,
         "hop_length": 256,
