@@ -106,10 +106,10 @@ def train(num_gpus, rank, group_name, output_directory, epochs,
     # =====START: ADDED FOR DISTRIBUTED======
     train_sampler = DistributedSampler(trainset) if num_gpus > 1 else None
     # =====END:   ADDED FOR DISTRIBUTED======
-    train_loader = DataLoader(trainset, num_workers=8, shuffle=True,
+    train_loader = DataLoader(trainset, num_workers=8, shuffle=False,
                               sampler=train_sampler,
                               batch_size=batch_size,
-                              pin_memory=True,
+                              pin_memory=False,
                               drop_last=True)
 
     # Get shared output_directory ready

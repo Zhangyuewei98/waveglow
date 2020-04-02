@@ -172,7 +172,7 @@ def main(config, stdout_dir, args_str):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('-c', '--config', type=str, required=True,
+    parser.add_argument('-c', '--config', type=str, default='config.json',
                         help='JSON file for configuration')
     parser.add_argument('-s', '--stdout_dir', type=str, default=".",
                         help='directory to save stoud logs')
